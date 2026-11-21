@@ -45,6 +45,7 @@ jobs:
       - name: Build unsigned mac-x64 DMG
         run: pnpm run package:desktop:mac:x64:unsigned
       - name: Upload DMG
+              if: always()
         uses: actions/upload-artifact@v7
         with:
           name: deepseek-harness-mac-x64-dmg
