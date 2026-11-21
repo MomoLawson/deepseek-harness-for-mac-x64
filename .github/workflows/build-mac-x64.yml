@@ -1,0 +1,61 @@
+name: Build Desktop macOS Intel (fork)
+
+# Custom workflow for a personal fork. Upstream's own
+# .github/workflows/macos-intel-package.yml cannot run in a fork: it targets
+# DeepSeek's self-hosted Mac (dsh-mac-package-trial) and does signing +
+# notarization. This one uses a GitHub-hosted Intel runner and builds the
+# unsigned DMG instead: pnpm run package:desktop:mac:x64:unsigned
+# Output: apps/desktop/.desktop-build/targets/mac-x64/unsigned-artifacts/*.dmg
+#
+# Weekly schedule: Sundays 02:00 UTC (10:00 CST). GitHub only runs scheduled
+# workflows from the default branch, so this file must live on master.
+# Each run checks out the latest upstream master, so weekly builds track
+# upstream without syncing the fork. NOTE: this repo is a fork, so GitHub
+# disables its schedules by default (state disabled_fork) — enable Actions
+# in the fork's Actions tab and enable this workflow, or the cron never fires.
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/build-mac-x64.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build-mac-x64:
+    runs-on: macos-15-intel
+    timeout-minutes: 180
+    steps:
+      - name: Check out latest upstream master
+        uses: actions/checkout@v7
+        with:
+          repository: deepseek-ai/deepseek-harness
+          ref: master
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build unsigned mac-x64 DMG
+        run: pnpm run package:desktop:mac:x64:unsigned
+      - name: Upload DMG
+        uses: actions/upload-artifact@v7
+        with:
+          name: deepseek-harness-mac-x64-dmg
+          path: apps/desktop/.desktop-build/targets/mac-x64/unsigned-artifacts/*.dmg
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload packaging logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mac-x64-package-logs
+          path: apps/desktop/.desktop-build/packaging-runs/
+          if-no-files-found: ignore
+          retention-days: 14
